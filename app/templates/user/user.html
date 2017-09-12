@@ -43,7 +43,7 @@
 						{{ blog.summary | safe }}
 	                </p>
 	                <ul class="actions">
-	                    <li><a href="{{ url_for('user.blog_page', username=user.username, blog_id=blog.id) }}" class="button big">Read More</a></li>
+	                    <li><a href="{{ url_for('user.blog_page', host_username=host_user.username, username=user.username, blog_id=blog.id) }}" class="button big">Read More</a></li>
 	                </ul>
 	            </div>
 	        </section>

@@ -13,7 +13,7 @@ class Config:
     # 邮件主题的前缀
     BLEXT_MAIL_SUBJECT_PREFIX = '[BlEXT]'
     # 发件人的地址
-    BLEXT_MAIL_SENDER = 'Blext admin <BLEXT@qq.com>'
+    BLEXT_MAIL_SENDER = 'Blext admin <1960547638@qq.com>'
     # 电子邮件收件人
     BLEXT_ADMIN = os.environ.get('BLEXT_ADMIN')
     # 用户博客主页每页显示文章数

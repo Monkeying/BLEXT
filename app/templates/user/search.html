@@ -5,8 +5,7 @@
         <div class="inner">
         <section>
             <ul class="comments">
-                {% if users %}
-                {% for user in users %}
+                {% if user %}
                 <li class="comment">
                     <div class="comment-content">
                         <section id="banner">
@@ -14,11 +13,11 @@
                                 <header>
                                     <h2><a href="{{ url_for('user.user',host_username=host_user.username,username=user.username) }}">{{ user.username }}</a></h2>
                                 </header>
+                                <section>{{ user.about_me }}</section>
                             </div>
                         </section>
                     </div>
                 </li>
-                {% endfor %}
                 {% else %}
                     <header id="header"></header>
                     <section>

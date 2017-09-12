@@ -5,7 +5,7 @@ from .forms import SigninForm, SignupForm, PasswordResetForm, PasswordResetReque
 from flask_login import login_user, logout_user, login_required, current_user
 from ..models import User
 from .. import db
-from ..email import send_email
+from ..myemail import send_email
 
 
 # 请求钩子：过滤未确认用户
@@ -127,6 +127,7 @@ def password_reset_request():
                        'auth/email/reset_password',
                        user=user, token=token,
                        next=request.args.get('next'))
+            print("1")
         flash('An email with instructions to reset your password has been '
               'sent to you.')
         return redirect(url_for('auth.sign_in'))

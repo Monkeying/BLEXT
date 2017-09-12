@@ -22,11 +22,11 @@ def index(username):
             query = current_user.followed_blogs
             # 获得用户所有文章（按时间戳顺序）
         else:
-            query = Blog.query
+            query = Blog.query.filter_by(author_id=host_user.id,draft=False)
         pagination = query.order_by(Blog.timestamp.desc()).paginate(
             page, per_page=current_app.config['BLEXT_BLOGS_PER_PAGE'], error_out=False)
         blogs = pagination.items
-        return render_template('user/index.html', blogs=blogs, pagination=pagination, host_user=host_user)
+        return render_template('user/index.html', blogs=blogs, pagination=pagination, host_user=host_user,user=user)
     abort(404)
 
 
@@ -114,37 +114,67 @@ def drafts(username):
         return render_template('user/index.html', blogs=blogs, pagination=pagination, host_user=host_user, draft_enter=draft_enter)
     abort(404)
 
-
 # 用户文章路由
 @user.route('/<username>/<int:blog_id>',methods=['GET','POST'])
-def blog_page(username, blog_id):
+def self_blog_page(username, blog_id):
     # 利用blog_id从数据库读到blog对象并返回给模版
-    host_user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(username=username).first()
     blog = Blog.query.filter_by(id=blog_id).first()
     # 如果访问的用户和文章存在：
-    if host_user and blog:
+    if user and blog:
         # 如果当前用户已登录并且 id 和被访问用户相同（是本人）或者当前文章不是草稿：
-        if (current_user.is_authenticated and host_user.id == current_user.id) or not blog.draft:
+        if (current_user.is_authenticated and user.id == current_user.id) or not blog.draft:
             form = CommentForm()
             if form.validate_on_submit():
                 comment = Comment(body=form.body.data,
                                   blog_id=blog.id,
-                                  author_id=host_user.id)
+                                  author_id=user.id)
                 db.session.add(comment)
                 flash('Your comment has been published.')
                 return redirect(url_for('.post', id=blog.id, page=-1, username=username))
-            post = Blog.query.get_or_404(blog_id)
+            blog = Blog.query.get_or_404(blog_id)
             page = request.args.get('page', 1, type=int)
             if page == -1:
                 page = (post.comments.count() - 1) // \
                        current_app.config['BLEXT_COMMENTS_PER_PAGE'] + 1
-            pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(
+            pagination = blog.comments.order_by(Comment.timestamp.asc()).paginate(
                 page, per_page=current_app.config['BLEXT_COMMENTS_PER_PAGE'],
                 error_out=False)
             comments = pagination.items
-            return render_template('/user/blog_page.html', blog=blog, host_user=host_user,form=form,comments=comments,pagination=pagination)
+            return render_template('/user/blog_page.html', blog=blog,host_user=user,form=form,comments=comments,pagination=pagination)
     abort(404)
 
+
+# 用户文章路由
+@user.route('/<host_username>/<username>/<int:blog_id>',methods=['GET','POST'])
+def blog_page(host_username,username, blog_id):
+    # 利用blog_id从数据库读到blog对象并返回给模版
+    host_user = User.query.filter_by(username=host_username).first()
+    user = User.query.filter_by(username=username).first()
+    blog = Blog.query.filter_by(id=blog_id).first()
+    # 如果访问的用户和文章存在：
+    if user and blog:
+        # 如果当前用户已登录并且 id 和被访问用户相同（是本人）或者当前文章不是草稿：
+        if (current_user.is_authenticated and user.id == current_user.id) or not blog.draft:
+            form = CommentForm()
+            if form.validate_on_submit():
+                comment = Comment(body=form.body.data,
+                                  blog_id=blog.id,
+                                  author_id=current_user.id)
+                db.session.add(comment)
+                flash('Your comment has been published.')
+                return redirect(url_for('.post', id=blog.id, page=-1, username=username))
+            blog = Blog.query.get_or_404(blog_id)
+            page = request.args.get('page', 1, type=int)
+            if page == -1:
+                page = (post.comments.count() - 1) // \
+                       current_app.config['BLEXT_COMMENTS_PER_PAGE'] + 1
+            pagination = blog.comments.order_by(Comment.timestamp.asc()).paginate(
+                page, per_page=current_app.config['BLEXT_COMMENTS_PER_PAGE'],
+                error_out=False)
+            comments = pagination.items
+            return render_template('/user/blog_page.html', blog=blog, host_user=host_user,user=user,form=form,comments=comments,pagination=pagination)
+    abort(404)
 
 # 删除用户文章（需要登录才能访问）
 @login_required
@@ -172,16 +202,11 @@ def about_me(username):
 
 @user.route('/<username>/search',methods=['GET','POST'])
 def searchUser(username):
-    print("in searchUser")
     if request.args.get('query', ""):
         search_username = request.args.get('query',"")
         host_user = User.query.filter_by(username=username).first_or_404()
-        users = User.query.filter_by(username=search_username)
-        print("here")
-        if users:
-            return render_template('user/search.html', users=users, host_user=host_user)
-        else:
-            return redirect(url_for(".index",username=username))
+        user = User.query.filter_by(username=search_username).first()
+        return render_template('user/search.html', user=user, host_user=host_user)
     else:
         return redirect(url_for(".index", username=username))
 
@@ -202,15 +227,15 @@ def show_followed(username):
 
 @user.route('/<username>/post/<int:id>', methods=['GET', 'POST'])
 def post(username,id):
-    host_user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(username=username).first()
     blog = Blog.query.get_or_404(id)
     form = CommentForm()
     if form.validate_on_submit():
         comment = Comment(body=form.body.data,
                           blog_id=blog.id,
-                          author_id=host_user.id)
+                          author_id=current_user.id)
         db.session.add(comment)
-        flash('Your comment has been published.')
+        flash('Your comment has been published')
         return redirect(url_for('.post', id=blog.id, page=-1,username=username))
     page = request.args.get('page', 1, type=int)
     if page == -1:
@@ -220,9 +245,8 @@ def post(username,id):
         page, per_page=current_app.config['BLEXT_COMMENTS_PER_PAGE'],
         error_out=False)
     comments = pagination.items
-    print("here",comments)
     return render_template('user/blog_page.html', blog=blog, form=form,
-                           comments=comments, pagination=pagination,host_user=host_user,user=host_user)
+                           comments=comments, pagination=pagination,host_user=current_user,user=user)
 
 
 @user.route('/<username>/follow')
@@ -292,12 +316,11 @@ def followed_by(username):
 
 @user.route('/<host_username>/<username>')
 def user(host_username,username):
-    print("in user",host_username,username)
     host_user = User.query.filter_by(username=host_username).first_or_404()
     user = User.query.filter_by(username=username).first_or_404()
 
     page = request.args.get('page', 1, type=int)
-    query = Blog.query
+    query = Blog.query.filter_by(author_id=user.id, draft=False)
     pagination = query.order_by(Blog.timestamp.desc()).paginate(
         page, per_page=current_app.config['BLEXT_BLOGS_PER_PAGE'], error_out=False)
     blogs = pagination.items
